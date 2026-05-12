@@ -3,7 +3,7 @@ import boto3
 
 from langchain.chains import ConversationChain
 from langchain.prompts import PromptTemplate
-from langchain_community.llms import Bedrock
+from langchain_aws import BedrockLLM
 
 from prompts import SYSTEM_PROMPT
 from memory_store import memory
@@ -17,10 +17,10 @@ bedrock_client = boto3.client(
 )
 
 # Initialize Bedrock Llama Model
-llm = Bedrock(
+llm = BedrockLLM(
     model_id="us.meta.llama3-3-70b-instruct-v1:0",
     client=bedrock_client,
-    provider="meta",          
+    provider="meta",
     model_kwargs={
         "temperature": 0.7,
         "max_gen_len": 512
@@ -30,17 +30,12 @@ llm = Bedrock(
 # Prompt Template
 prompt_template = PromptTemplate(
     input_variables=["history", "input"],
-    template=f"""
-{SYSTEM_PROMPT}
-
-Conversation History:
-{{history}}
-
-User:
-{{input}}
-
-A:
-"""
+    template="""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+{system_prompt}
+<|eot_id|>
+{{history}}<|start_header_id|>user<|end_header_id|>
+{{input}}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+""".format(system_prompt=SYSTEM_PROMPT)
 )
 
 # Conversation Chain
@@ -55,30 +50,34 @@ conversation = ConversationChain(
 def generate_suggestions(user_input, response):
 
     prompt = f"""
-Generate 3 short follow-up questions.
+Based on this conversation, generate 3 short follow-up questions that the USER might want to ask next.
 
-User Question:
-{user_input}
+The questions should be from the USER's perspective, not the assistant's.
 
-Assistant Response:
-{response}
+User's last message: {user_input}
+Assistant's response: {response}
 
-Return only bullet points.
+Rules:
+- Write questions as if the user is asking them
+- Keep them short and relevant
+- Return only 3 bullet points, nothing else
+
+Example format:
+- How do I implement that?
+- What are the pros and cons?
+- Can you give me an example?
 """
 
     result = llm.invoke(prompt)
-
-    lines = result.split("\n")  # Note: Bedrock LLM returns string, not object
-
+    lines = result.split("\n")
     suggestions = []
 
     for line in lines:
-        cleaned = line.replace("-", "").strip()
+        cleaned = line.replace("-", "").replace("*", "").strip()
         if cleaned:
             suggestions.append(cleaned)
 
     return suggestions[:3]
-
 
 # Main Chat Function
 def chat_with_bot(user_message):
