@@ -30,6 +30,7 @@ executor_ollama = AgentExecutor(agent=agent_ollama, tools=tools, memory=memory, 
 
 def chat_with_bot(
     user_message: str,
+    provider: str = "ollama",
 ) -> dict:
 
     start_time = time.time()
@@ -37,6 +38,7 @@ def chat_with_bot(
     user_message = user_message.strip()
 
     logger.info("User message: %s", user_message)
+    logger.info("Provider: %s", provider)
 
     try:
 
