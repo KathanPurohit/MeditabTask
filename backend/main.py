@@ -12,9 +12,6 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AI Chatbot API")
 
-# FIX #7: Restrict CORS origins in production via an environment variable.
-# Set ALLOWED_ORIGINS="https://your-frontend.com" in your environment; falls
-# back to wildcard only when explicitly set to "*" (e.g. local dev).
 _raw_origins = os.getenv("ALLOWED_ORIGINS", "*")
 allowed_origins = (
     ["*"] if _raw_origins == "*" else [o.strip() for o in _raw_origins.split(",")]
@@ -36,8 +33,7 @@ def home():
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
-    # FIX #5: Catch any unhandled exception from chat_with_bot and return a
-    # proper 500 JSON response instead of letting FastAPI surface a raw crash.
+
     try:
         result = chat_with_bot(request.message)
         return ChatResponse(

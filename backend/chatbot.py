@@ -13,13 +13,11 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Initialize Bedrock Client
 bedrock_client = boto3.client(
     service_name="bedrock-runtime",
     region_name="us-east-1"
 )
 
-# Initialize Bedrock Llama Model
 llm = BedrockLLM(
     model_id="us.meta.llama3-3-70b-instruct-v1:0",
     client=bedrock_client,
@@ -29,21 +27,6 @@ llm = BedrockLLM(
         "max_gen_len": 1024
     }
 )
-
-# How the two-stage formatting works:
-#
-# Stage 1 — Python's .format(system_prompt=SYSTEM_PROMPT) runs at import time.
-#   - {{history}} and {{input}} are ESCAPED, so .format() leaves them alone
-#     and outputs the literal text {history} and {input}.
-#   - {system_prompt} is the ONLY placeholder .format() fills right now.
-#
-# Stage 2 — LangChain fills {history} and {input} at runtime per request,
-#   because PromptTemplate sees them as its declared input_variables.
-#
-# This is why both sets of braces must be treated differently:
-#   {system_prompt}   → single braces  → filled by Python's .format() now
-#   {{history}}       → double braces  → escaped through .format(), becomes
-#   {{input}}                            {history}/{input} for LangChain later
 
 prompt_template = PromptTemplate(
     input_variables=["history", "input"],
@@ -56,9 +39,7 @@ prompt_template = PromptTemplate(
     ).format(system_prompt=SYSTEM_PROMPT)
 )
 
-# Note: ConversationChain is deprecated in newer LangChain versions.
-# Consider migrating to RunnableWithMessageHistory + ChatPromptTemplate
-# when upgrading LangChain.
+
 conversation = ConversationChain(
     llm=llm,
     memory=memory,

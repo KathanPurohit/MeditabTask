@@ -1,6 +1,3 @@
-# FIX #6: Wrap the import in a try/except so a missing or malformed prompts
-# module surfaces a clear, actionable error at startup instead of a cryptic
-# AttributeError or ImportError later during the first request.
 
 _DEFAULT_SYSTEM_PROMPT = """You are a helpful assistant.
 
@@ -14,8 +11,7 @@ STRICT RULES:
 """
 
 try:
-    # If you have a custom system prompt defined elsewhere, import it here.
-    # from my_custom_prompts import SYSTEM_PROMPT  # noqa: F401
+
     SYSTEM_PROMPT: str = _DEFAULT_SYSTEM_PROMPT
     assert isinstance(SYSTEM_PROMPT, str) and SYSTEM_PROMPT.strip(), \
         "SYSTEM_PROMPT must be a non-empty string"
