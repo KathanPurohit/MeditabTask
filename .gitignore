@@ -12,6 +12,8 @@ __pycache__/
 venv/
 env/
 ENV/
+backend_venv/
+frontend_venv/
 
 # =========================
 # Environment Variables
