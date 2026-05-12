@@ -1,7 +1,11 @@
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import (
+    ConversationBufferWindowMemory
+)
 
-memory = ConversationBufferMemory(
+memory = ConversationBufferWindowMemory(
+    k=5,
     human_prefix="Human",
     ai_prefix="Assistant",
     memory_key="history",
+    return_messages=True
 )

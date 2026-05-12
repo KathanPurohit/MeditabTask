@@ -1,118 +1,136 @@
-# MeditabTask Project
+# MeditabTask
 
-## Overview
-MeditabTask is a Python-based project that implements an AI chatbot capable of reasoning and acting using tools. The chatbot is designed to handle user queries, perform calculations, and provide context-aware suggestions. It uses the LangChain framework for building agents and tools.
+MeditabTask is a local AI chatbot application with a Streamlit frontend and a FastAPI backend. The backend runs a LangChain ReAct agent on a local Ollama model, gives the agent access to tools, keeps short conversational memory, and returns suggested follow-up questions with each response.
 
-## Features
-- **AI Chatbot**: Powered by the `ChatOllama` model for generating responses.
-- **Tool Integration**: Includes tools for:
-  - Getting the current time.
-  - Performing mathematical calculations.
-- **ReAct Prompting**: Implements reasoning and acting for dynamic and iterative problem-solving.
-- **Customizable Prompts**: Uses `SYSTEM_PROMPT` and `REACT_AGENT_PROMPT` for defining AI behavior.
-- **Follow-up Suggestions**: Generates follow-up questions based on user input and responses.
+## Current Architecture
+
+```text
+Streamlit UI
+frontend/app.py
+    |
+    | POST /chat
+    v
+FastAPI API
+backend/main.py
+    |
+    | validates request/response with Pydantic
+    v
+Chat Orchestration
+backend/chatbot.py
+    |
+    | LangChain ReAct agent + memory + tools
+    v
+Local Ollama Model
+qwen2.5-coder:7b
+```
+
+## Components
+
+- `frontend/app.py` provides the chat UI, stores the visible chat history in Streamlit session state, sends user messages to the backend, and renders returned follow-up suggestions as buttons.
+- `backend/main.py` exposes the FastAPI app, configures CORS, defines the health route, and serves the `/chat` endpoint.
+- `backend/models.py` defines the `ChatRequest` and `ChatResponse` Pydantic schemas. Blank messages are rejected at validation time.
+- `backend/chatbot.py` creates the Ollama-backed LangChain agent, invokes it for each user message, and asks the model to generate follow-up suggestions.
+- `backend/tools.py` registers the ReAct tools available to the agent: current time lookup and safe arithmetic calculation.
+- `backend/memory_store.py` configures a `ConversationBufferWindowMemory` with the last 5 turns.
+- `backend/prompts.py` contains the system prompt and ReAct agent prompt template.
+- `backend/suggestions.py` generates up to 3 short follow-up questions from the latest user message and assistant response.
 
 ## Project Structure
-```
+
+```text
 MeditabTask/
-├── backend/
-│   ├── chatbot.py          # Main chatbot implementation
-│   ├── memory_store.py     # Memory management for the chatbot
-│   ├── models.py           # Model-related configurations
-│   ├── prompts.py          # Prompt templates for the chatbot
-│   ├── requirements.txt    # Backend dependencies
-├── backend_venv/           # Virtual environment for backend
-├── frontend/
-│   ├── app.py              # Frontend implementation using Streamlit
-│   ├── requirements.txt    # Frontend dependencies
-├── frontend_venv/          # Virtual environment for frontend
-└── README.md               # Project documentation
++-- backend/
+|   +-- chatbot.py
+|   +-- main.py
+|   +-- memory_store.py
+|   +-- models.py
+|   +-- prompts.py
+|   +-- requirements.txt
+|   +-- suggestions.py
+|   +-- tools.py
++-- frontend/
+|   +-- app.py
+|   +-- requirements.txt
++-- backend_venv/
++-- frontend_venv/
++-- .gitignore
++-- README.md
 ```
 
-## Installation
+## Prerequisites
 
-### Prerequisites
-- Python 3.11 or higher
-- Virtual environment tools (e.g., `venv` or `virtualenv`)
+- Python 3.11 or newer
+- Ollama installed and running locally
+- The local model used by the backend:
 
-### Backend Setup
-1. Navigate to the `backend` directory:
-   ```bash
-   cd backend
-   ```
-2. Create and activate a virtual environment:
-   ```bash
-   python -m venv ../backend_venv
-   source ../backend_venv/bin/activate  # On Windows: ../backend_venv\Scripts\activate
-   ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+```powershell
+ollama pull qwen2.5-coder:7b
+```
 
-### Frontend Setup
-1. Navigate to the `frontend` directory:
-   ```bash
-   cd frontend
-   ```
-2. Create and activate a virtual environment:
-   ```bash
-   python -m venv ../frontend_venv
-   source ../frontend_venv/bin/activate  # On Windows: ../frontend_venv\Scripts\activate
-   ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Backend Setup
 
-## Usage
+From the project root:
 
-### Running the Backend
-1. Activate the backend virtual environment:
-   ```bash
-   source ../backend_venv/bin/activate  # On Windows: ../backend_venv\Scripts\activate
-   ```
-2. Run the backend server:
-   ```bash
-   python chatbot.py
-   ```
+```powershell
+python -m venv backend_venv
+.\backend_venv\Scripts\Activate.ps1
+pip install -r backend\requirements.txt
+```
 
-### Running the Frontend
-1. Activate the frontend virtual environment:
-   ```bash
-   source ../frontend_venv/bin/activate  # On Windows: ../frontend_venv\Scripts\activate
-   ```
-2. Start the Streamlit app:
-   ```bash
-   streamlit run app.py
-   ```
+Run the API:
 
-## Prompts
-- **SYSTEM_PROMPT**: Defines the assistant's behavior and rules.
-- **REACT_AGENT_PROMPT**: Enables reasoning and acting for dynamic problem-solving.
+```powershell
+cd backend
+uvicorn main:app --reload
+```
 
-## Tools
-- **`get_current_time`**: Returns the current date and time.
-- **`calculator`**: Evaluates mathematical expressions.
+The backend runs at `http://127.0.0.1:8000` by default.
 
-## Contributing
-1. Fork the repository.
-2. Create a new branch for your feature or bug fix:
-   ```bash
-   git checkout -b feature-name
-   ```
-3. Commit your changes:
-   ```bash
-   git commit -m "Add new feature"
-   ```
-4. Push to the branch:
-   ```bash
-   git push origin feature-name
-   ```
-5. Open a pull request.
+Available routes:
 
-## License
-This project is licensed under the MIT License. See the LICENSE file for details.
+- `GET /` returns a simple API health message.
+- `POST /chat` accepts `{"message": "...", "provider": "ollama"}` and returns `{"response": "...", "suggestions": [...]}`.
 
-## Contact
-For questions or support, please contact the project maintainer.
+## Frontend Setup
+
+In a second terminal, from the project root:
+
+```powershell
+python -m venv frontend_venv
+.\frontend_venv\Scripts\Activate.ps1
+pip install -r frontend\requirements.txt
+streamlit run frontend\app.py
+```
+
+The frontend posts to `http://127.0.0.1:8000/chat`, so start the backend before using the UI.
+
+## Configuration
+
+The backend allows all CORS origins by default. To restrict origins, set `ALLOWED_ORIGINS` before starting FastAPI:
+
+```powershell
+$env:ALLOWED_ORIGINS = "http://localhost:8501,http://127.0.0.1:8501"
+uvicorn main:app --reload
+```
+
+The active model is currently configured in `backend/chatbot.py`:
+
+```python
+model="qwen2.5-coder:7b"
+```
+
+## Request Flow
+
+1. The user enters a message in the Streamlit chat UI.
+2. The frontend sends the message and selected provider to `POST /chat`.
+3. FastAPI validates the request with `ChatRequest`.
+4. `chat_with_bot()` invokes the LangChain ReAct executor.
+5. The agent may call tools from `backend/tools.py`.
+6. The backend generates short suggested follow-up questions.
+7. FastAPI returns the assistant response and suggestions to Streamlit.
+
+## Notes
+
+- The `provider` field exists in the API and UI, but the current implementation only supports `ollama`.
+- Conversation memory is process-local and in-memory. Restarting the backend clears it.
+- The frontend stores displayed chat messages in Streamlit session state.
