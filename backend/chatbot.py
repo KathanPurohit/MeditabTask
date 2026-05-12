@@ -1,51 +1,47 @@
 from dotenv import load_dotenv
-import boto3
 import logging
+from datetime import datetime
 
-from langchain.chains import ConversationChain
+from langchain_community.chat_models import ChatOllama
+from langchain.agents import AgentExecutor, create_react_agent
 from langchain.prompts import PromptTemplate
-from langchain_aws import BedrockLLM
+from langchain.tools import tool
 
-from prompts import SYSTEM_PROMPT
+from prompts import SYSTEM_PROMPT, REACT_AGENT_PROMPT
 from memory_store import memory
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-bedrock_client = boto3.client(
-    service_name="bedrock-runtime",
-    region_name="us-east-1"
+llm = ChatOllama(
+    model="qwen2.5-coder:7b",
+    temperature=0.7,
 )
 
-llm = BedrockLLM(
-    model_id="us.meta.llama3-3-70b-instruct-v1:0",
-    client=bedrock_client,
-    provider="meta",
-    model_kwargs={
-        "temperature": 0.7,
-        "max_gen_len": 1024
-    }
+@tool
+def get_current_time(query: str) -> str:
+    """Returns the current date and time."""
+    return f"The current date and time is {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+
+@tool
+def calculator(expression: str) -> str:
+    """Evaluates a mathematical expression and returns the result."""
+    try:
+        # Use eval safely by restricting globals and locals
+        result = eval(expression, {"__builtins__": None}, {})
+        return str(result)
+    except Exception as e:
+        return f"Error evaluating expression: {e}"
+
+tools = [get_current_time, calculator]
+
+prompt_template = PromptTemplate.from_template(
+    template=REACT_AGENT_PROMPT.replace("{system_prompt}", SYSTEM_PROMPT)
 )
 
-prompt_template = PromptTemplate(
-    input_variables=["history", "input"],
-    template=(
-        "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n"
-        "{system_prompt}\n"
-        "<|eot_id|>\n"
-        "{{history}}<|start_header_id|>user<|end_header_id|>\n"
-        "{{input}}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n"
-    ).format(system_prompt=SYSTEM_PROMPT)
-)
-
-
-conversation = ConversationChain(
-    llm=llm,
-    memory=memory,
-    prompt=prompt_template,
-    verbose=False
-)
+agent = create_react_agent(llm, tools, prompt_template)
+agent_executor = AgentExecutor(agent=agent, tools=tools, memory=memory, verbose=True, handle_parsing_errors=True)
 
 
 def generate_suggestions(user_input: str, response: str) -> list[str]:
@@ -72,7 +68,8 @@ Example format:
     result = llm.invoke(prompt)
 
     suggestions = []
-    for line in result.split("\n"):
+    content = result.content if hasattr(result, 'content') else str(result)
+    for line in content.split("\n"):
         stripped = line.strip()
         if stripped.startswith(("-", "*", "•")):
             cleaned = stripped.lstrip("-*• ").strip()
@@ -85,15 +82,16 @@ Example format:
 def chat_with_bot(user_message: str) -> dict:
     """Run a conversation turn and return the response plus suggestions."""
 
-    response = conversation.predict(input=user_message)
+    response_obj = agent_executor.invoke({"input": user_message})
+    response_text = response_obj.get("output", "")
 
     try:
-        suggestions = generate_suggestions(user_message, response)
+        suggestions = generate_suggestions(user_message, response_text)
     except Exception as e:
         logger.warning("Suggestion generation failed: %s", e)
         suggestions = []
 
     return {
-        "response": response,
+        "response": response_text,
         "suggestions": suggestions,
     }
