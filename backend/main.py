@@ -35,7 +35,7 @@ def home():
 def chat(request: ChatRequest):
 
     try:
-        result = chat_with_bot(request.message)
+        result = chat_with_bot(request.message, request.provider)
         return ChatResponse(
             response=result["response"],
             suggestions=result["suggestions"],

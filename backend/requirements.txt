@@ -4,3 +4,5 @@ langchain==0.1.20
 langchain-community==0.0.38
 python-dotenv==1.0.1
 pydantic==2.9.2
+boto3==1.34.101
+langchain-aws==0.1.6

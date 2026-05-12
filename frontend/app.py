@@ -7,6 +7,8 @@ st.set_page_config(page_title="AI Chatbot", page_icon="🤖")
 st.title("🤖 Autonomous AI Chatbot")
 st.markdown("I am powered by local Ollama models and have access to tools like a **Calculator** and **Current Time**.")
 
+provider = st.radio("Select AI Provider:", ["ollama"], horizontal=True)
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "suggestions" not in st.session_state:
@@ -41,7 +43,7 @@ if query:
     with st.chat_message("assistant"):
         with st.spinner("Thinking and using tools..."):
             try:
-                response = requests.post(API_URL, json={"message": query})
+                response = requests.post(API_URL, json={"message": query, "provider": provider})
                 response.raise_for_status()
                 data = response.json()
                 bot_response = data.get("response", "I couldn't process that.")

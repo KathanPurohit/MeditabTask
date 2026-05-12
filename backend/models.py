@@ -1,8 +1,9 @@
 from pydantic import BaseModel, field_validator
-
+from typing import Optional
 
 class ChatRequest(BaseModel):
     message: str
+    provider: Optional[str] = "ollama"
 
 
     @field_validator("message")
