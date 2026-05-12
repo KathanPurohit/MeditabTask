@@ -3,7 +3,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 def generate_suggestions(
     user_input: str,
     response: str,

@@ -1,12 +1,9 @@
 import logging
 import time
-from datetime import datetime
 
-import os
 from langchain_community.chat_models import ChatOllama
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.prompts import PromptTemplate
-from langchain.tools import tool
 
 from prompts import SYSTEM_PROMPT, REACT_AGENT_PROMPT
 from memory_store import memory
@@ -33,7 +30,6 @@ executor_ollama = AgentExecutor(agent=agent_ollama, tools=tools, memory=memory, 
 
 def chat_with_bot(
     user_message: str,
-    provider: str = "ollama"
 ) -> dict:
 
     start_time = time.time()
